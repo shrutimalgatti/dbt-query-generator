@@ -1,0 +1,133 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+# .env/
+.venv/
+# env/
+venv/
+# ENV/
+# env.bak/
+venv.bak/
+.conda/
+
+# Environment variables and secrets
+# .env
+# *.env
+# .env.local
+# .env.production
+# .env.staging
+
+# Google Cloud credentials and service account keys
+# *.json
+# bhabani-demo-461705-679b07605722.json
+# *-service-account*.json
+# *-credentials*.json
+# google-*.json
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git repositories (downloaded repos)
+repos/
+downloaded_repos/
+temp_repos/
+
+# Archives and compressed files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Data files
+*.csv
+*.xlsx
+*.pkl
+*.pickle
+
+# Cache directories
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation builds
+docs/_build/
+site/
+
+# Local configuration
+config.local.*
+settings.local.*
+
+# Test outputs
+.tox/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Qodo
+.qodo/
+
+# Local development
+local/
+scratch/

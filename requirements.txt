@@ -5,3 +5,5 @@ google-cloud-bigquery
 python-dotenv
 google-cloud-aiplatform[adk,agent_engines]
 google-cloud-bigquery-migration
+langchain-google-community
+google-cloud-discoveryengine

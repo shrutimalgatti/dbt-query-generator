@@ -1,0 +1,6 @@
+google-adk
+google-cloud-storage
+google-generativeai
+Pillow
+dbt-bigquery
+fastapi

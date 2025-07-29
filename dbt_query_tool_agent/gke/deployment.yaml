@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dbt-agent-app-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dbt-agent-app
+  template:
+    metadata:
+      labels:
+        app: dbt-agent-app
+    spec:
+      serviceAccountName: dbt-fastapi-ksa
+      containers:
+      - name: dbt-agent-container
+        image: us-central1-docker.pkg.dev/mk-gcp-playground/dbt-agent/dbt-agent-runner@sha256:c5d5e3b00efbf2b0392a27c07771825c295e3d908a1101d6dc0f704a7ff25e93
+        ports:
+        - containerPort: 8080
