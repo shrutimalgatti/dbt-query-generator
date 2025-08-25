@@ -2,44 +2,70 @@ import asyncio
 import uuid
 from google.genai import types as genai_types
 from google.adk.agents.run_config import RunConfig, StreamingMode
-
-from validation_tool_agent.setup.initialization import init_vertexai
-from validation_tool_agent.agent import root_agent
-from validation_tool_agent.services.session import create_session
-from validation_tool_agent.services.runner import create_runner
 import os
+
+from pathlib import Path
 from dotenv import load_dotenv
-load_dotenv()
+
+# Build a path to the .env file in the project root directory.
+# This makes the script independent of the current working directory.
+dotenv_path = Path(__file__).resolve().parent / '.env'
+load_dotenv(dotenv_path=dotenv_path)
+from dbt_query_tool_agent.setup.initialization import init_vertexai
 from google.adk.artifacts import GcsArtifactService
 
-GCP_PROJECT_ID = os.environ.get("GCP_PROJECT")
-GCP_LOCATION = os.environ.get("GCP_LOCATION")
+# --- Configuration ---
+# Prioritize standard `GOOGLE_CLOUD_*` variables, but fall back to legacy `GCP_*` names
+# for backward compatibility with older .env files.
+GCP_PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCP_PROJECT")
+GCP_LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION") or os.environ.get("GCP_LOCATION")
+
+# --- Initialization ---
+# This must run before any agent modules are imported.
+try:
+    if not GCP_PROJECT_ID or not GCP_LOCATION:
+        raise ValueError(
+            "GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION environment variables must be set. "
+            "Please check your .env file."
+        )
+    init_vertexai(GCP_PROJECT_ID, GCP_LOCATION)
+    print(f"Vertex AI initialized for project '{GCP_PROJECT_ID}' in '{GCP_LOCATION}'.")
+except ValueError as e:
+    print(f"ERROR: {e}")
+    exit(1) # Exit if configuration is missing
+
+# Now that the environment is initialized, we can import our agent modules.
+from dbt_query_tool_agent.agent import root_agent
+from dbt_query_tool_agent.services.runner import create_runner
+from dbt_query_tool_agent.services.session import create_session
+
+# --- Robust StreamingMode detection ---
+# Find a valid streaming mode attribute, trying common names to support different ADK versions.
+if hasattr(StreamingMode, 'STREAMING'):
+    STREAMING_ENUM_VALUE = StreamingMode.STREAMING
+elif hasattr(StreamingMode, 'FINAL_RESPONSE_STREAM'):
+    STREAMING_ENUM_VALUE = StreamingMode.FINAL_RESPONSE_STREAM
+else:
+    # As a last resort, fallback to non-streaming mode if no known streaming attribute is found.
+    print("WARNING: Could not find a known streaming mode. Falling back to non-streaming mode.")
+    STREAMING_ENUM_VALUE = StreamingMode.NONE
 
 gcs_bucket_name_py = "gs://shruti_test3"
 try:
-    gcs_service_py = GcsArtifactService(bucket_name=gcs_bucket_name_py)
+    gcs_service_py = GcsArtifactService(bucket_name=gcs_bucket_name_py.replace("gs://", ""))
     print(f"Python GcsArtifactService initialized for bucket: {gcs_bucket_name_py}")
 except Exception as e:
     # Catch potential errors during GCS client initialization (e.g., auth issues)
     print(f"Error initializing Python GcsArtifactService: {e}")
-try:
-    if not GCP_PROJECT_ID:
-        raise ValueError("GCP_PROJECT_ID is not set or is empty")
-    if not GCP_LOCATION:
-        raise ValueError("GCP_LOCATION is not set or is empty")
-except ValueError as e: # Catch the ValueError we raised
-    print(f"ERROR:{e}")
-    
-if GCP_PROJECT_ID and GCP_LOCATION:
-    init_vertexai(GCP_PROJECT_ID,GCP_LOCATION)
 
 APP_NAME = "dbt-query-generator"
 USER_ID = f"user_{uuid.uuid4().hex[:8]}"
 
-session_service, session_id, session = create_session(APP_NAME, USER_ID)
-agent_runner = create_runner(APP_NAME, root_agent, session_service,gcs_bucket_name_py)
 
 async def main():
+    session_service, session_id, session = await create_session(APP_NAME, USER_ID)
+    agent_runner = create_runner(APP_NAME, root_agent, session_service, gcs_service_py)
+
     print("\n--- Simplified Agent Interaction ---")
     print(f"Session ID: {session.id}")
     print("Agent is ready. Type 'quit' to exit.")
@@ -57,7 +83,7 @@ async def main():
             continue
 
         content = genai_types.Content(role='user', parts=[genai_types.Part(text=user_query)])
-        run_config = RunConfig(streaming_mode=StreamingMode.NONE)
+        run_config = RunConfig(streaming_mode=STREAMING_ENUM_VALUE)
         final_response_text = ""
         sttm_file_path = "sttm_mapping.csv"
 
@@ -76,23 +102,23 @@ async def main():
                 new_message=content,
                 run_config=run_config
             ):
-                if event.tool_code_output:
-                    print(f"Tool Output (stdout): {event.tool_code_output.stdout}")
-                    print(f"Tool Output (stderr): {event.tool_code_output.stderr}")
-                    # You might also want to print event.tool_code_output.result if the tool returns something
-                    # print(f"Tool Return Value: {event.tool_code_output.result}") # Note: result might be a dict or object depending on your tool's return
-                elif event.is_final_response():
-                    if event.is_final_response():
-                        if event.content and event.content.parts:
-                            text_parts = [part.text for part in event.content.parts if hasattr(part, 'text') and part.text]
-                            final_response_text = " ".join(text_parts).strip()
-                        else:
-                            final_response_text = "[Agent finished processing, but provided no textual response.]"
-                    elif event.error_message:
-                        final_response_text = f"Agent Error: {event.error_message}"
-                        break
+                if hasattr(event, 'tool_code_output') and event.tool_code_output:
+                    if event.tool_code_output.stdout:
+                        print(f"Tool Output (stdout): {event.tool_code_output.stdout}")
+                    if event.tool_code_output.stderr:
+                        print(f"Tool Output (stderr): {event.tool_code_output.stderr}")
+                # Stream any text content from the agent to provide real-time feedback.
+                elif event.content and event.content.parts and hasattr(event.content.parts[0], "text"):
+                    text_part = event.content.parts[0].text
+                    if text_part: # Prevent concatenating None
+                        print(text_part, end="", flush=True) # Print immediately
+                        final_response_text += text_part
+                elif event.error_message:
+                    final_response_text = f"Agent Error: {event.error_message}"
+                    break
 
-            print(f"Agent: {final_response_text}")
+            if final_response_text:
+                print() # Add a newline after the streamed response
 
         except Exception as e:
             print(f"\n Error during execution: {e}")

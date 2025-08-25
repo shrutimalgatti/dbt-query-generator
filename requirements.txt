@@ -1,9 +1,10 @@
-google-adk
-google-cloud-aiplatform
+google-cloud-aiplatform[adk,agent_engines]
 google-cloud-storage
 google-cloud-bigquery
-python-dotenv
-google-cloud-aiplatform[adk,agent_engines]
 google-cloud-bigquery-migration
 langchain-google-community
 google-cloud-discoveryengine
+gradio
+python-dotenv
+pandas
+openpyxl

@@ -1,0 +1,28 @@
+version: 2
+
+sources:
+  - name: test_lbg
+    database: shruti-test-414408
+    schema: test_lbg
+    description: "Raw data sources for ONS postcode processing."
+    tables:
+      - name: onspd_full
+        description: "Contains raw ONS Postcode Directory data including postcode, coordinates, and various geographic codes."
+      - name: COUNTRY_CODE
+        description: "Lookup table for country codes and their corresponding names."
+      - name: Westminster_Parliamentary
+        description: "Lookup table for Westminster Parliamentary constituencies, including codes and names."
+      - name: ITL125
+        description: "Lookup table for International Territorial Levels (ITL1, ITL2, ITL3) and Local Administrative Units (LAU1) codes and names."
+      - name: LA_UA
+        description: "Lookup table for Local Authority and Unitary Authority codes and names."
+      - name: ward_name
+        description: "Lookup table for ward codes and names."
+      - name: EER
+        description: "Lookup table for European Electoral Regions."
+      - name: rural_urban
+        description: "Lookup table for rural and urban classifications based on ONS codes."
+
+models:
+  - name: ons
+    description: "A refined and transformed dbt model providing comprehensive ONS postcode data, including derived geographic attributes and joined lookup details."
